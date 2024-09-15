@@ -17,7 +17,8 @@ var host = new HostBuilder()
 #endif
 
         services.AddSingleton<IPasswordService, PasswordService>();
-        services.AddSingleton<IPasswordService, PasswordService>();
+        services.AddSingleton<IDbService, DbService>();
+        services.AddSingleton<IJwtTokenService, JwtTokenService>();
     })
     .Build();
 

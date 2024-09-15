@@ -2,14 +2,6 @@ namespace Ehrenmeter.Backend.Services
 {
     internal static class ConfigService
     {
-        private static readonly string _freePBXGraphQLEndpoint = Environment.GetEnvironmentVariable("FreePBXGraphQLEndpoint") ??
-            throw new ArgumentNullException(nameof(_freePBXGraphQLEndpoint));
-
-        public static Uri GetGraphQLEndpoint()
-        {
-            return new Uri(_freePBXGraphQLEndpoint);
-        }
-
         public static string GetConnectionString(string name)
         {
             var connectionString = System.Environment.GetEnvironmentVariable($"ConnectionStrings:{name}", EnvironmentVariableTarget.Process);

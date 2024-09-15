@@ -7,45 +7,94 @@ using Ehrenmeter.Backend.Services;
 
 namespace Ehrenmeter.Backend
 {
-    internal class Main(ILogger<Main> logger, IHTMLViewRetrievalService htmlViewRetrievalService)
+    internal class Main(ILogger<Main> logger, IHTMLViewRetrievalService htmlViewRetrievalService, IDbService dbService,
+            IJwtTokenService _jwtTokenService)
     {
-        private readonly string _websiteURL = Environment.GetEnvironmentVariable("WebsiteURL") ??
-            throw new ArgumentNullException(nameof(_websiteURL));
-
-        private readonly string _stripeProductPriceId = Environment.GetEnvironmentVariable("StripeProductPriceId") ??
-            throw new ArgumentNullException(nameof(_stripeProductPriceId));
-
-        private class ClientPrincipal
+        [Function("ehre")]
+        public async Task<IActionResult> Index([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequest req)
         {
-            private Guid _userId;
-
-            public required string IdentityProvider { get; init; }
-
-            public required string UserId
+            var token = req.Headers["Authorization"].ToString().Replace("Bearer ", "");
+            if (token is null ||
+                !await _jwtTokenService.ValidateToken(token))
             {
-                get
-                {
-                    return _userId.ToString();
-                }
-                init
-                {
-                    _userId = Guid.Parse(value);
-                }
+                return await RenderView("login");
             }
 
-            public required string UserDetails { get; init; }
-            public required IEnumerable<string> UserRoles { get; init; }
-        }
+            var userId = _jwtTokenService.GetUserId(token);
 
-        [Function("index")]
-        public async Task<IActionResult> Index([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequest req)
-        {
-            var pageViewData = new
-            {
-                StripeProductPriceId = _stripeProductPriceId
+            if (req.Method == "POST"){
+                var formData = await req.ReadFormAsync();
+        
+                var receiverId = int.Parse(formData["receiverId"].ToString());
+                var amount = int.Parse(formData["amount"].ToString());
+                string description = formData["description"].ToString();
+
+                await dbService.GiveEhre(userId, receiverId, amount, description);
+            }
+
+            var users = await dbService.GetTopUsers();
+            var pageViewData = new {
+                Users = users
             };
 
-            return await RenderView("index", pageViewData);
+            logger.LogInformation($"Retrieved {users.Count} users for ehre view");
+            return await RenderView("ehre", pageViewData);
+        }
+
+        [Function("login")]
+        public async Task<IActionResult> Login([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequest req)
+        {
+            var form = await req.ReadFormAsync();
+            var username = form["username"].ToString();
+            var password = form["password"].ToString();
+
+            logger.LogInformation($"Got a login request with username {username}");
+
+            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password)){
+                return new UnauthorizedResult();
+            }
+
+            var authResult = await dbService.AuthenticateUser(username, password);
+            if (!authResult.isAuthenticated){
+                return new UnauthorizedResult();
+            }
+
+            var token = _jwtTokenService.GenerateToken(authResult.userId);
+            return new OkObjectResult(new { token });
+        }
+
+        [Function("signup")]
+        public async Task<IActionResult> SignUp([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequest req)
+        {
+            if (req.Method == "GET"){
+                return await RenderView("signup");
+            }
+
+            if (!req.HasFormContentType)
+            {
+                return new BadRequestObjectResult("Invalid form submission");
+            }
+
+            var form = await req.ReadFormAsync();
+            var username = form["username"].ToString();
+            var password = form["password"].ToString();
+
+            logger.LogInformation($"Got a sign up request with username {username}");
+
+            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+            {
+                return new BadRequestObjectResult("User registration failed - missing fields");
+            }
+
+            var user = await dbService.RegisterUser(username, password);
+
+            if (user is null)
+            {
+                return new BadRequestObjectResult("User registration failed");
+            }
+
+            var token = _jwtTokenService.GenerateToken(user.UserId);
+            return new OkObjectResult(new { token });
         }
 
         private async Task<ContentResult> RenderView(string viewName, object? @object = null)

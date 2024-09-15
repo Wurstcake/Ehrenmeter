@@ -1,0 +1,62 @@
+<div class="w-full max-w-xs">
+  <form
+    id="signupForm"
+    hx-post="/api/signup"
+    hx-target="#content-container"
+    class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4"
+  >
+    <h2 class="text-center text-2xl font-bold mb-6">Sign Up</h2>
+    <div class="mb-4">
+      <label class="block text-gray-700 text-sm font-bold mb-2" for="username">
+        Username
+      </label>
+      <input
+        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+        id="username"
+        name="username"
+        type="text"
+        placeholder="Username"
+      />
+    </div>
+    <div class="mb-6">
+      <label class="block text-gray-700 text-sm font-bold mb-2" for="password">
+        Password
+      </label>
+      <input
+        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline"
+        id="password"
+        name="password"
+        type="password"
+        placeholder="******************"
+      />
+    </div>
+    <div class="flex items-center justify-between">
+      <button
+        class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+        type="submit"
+      >
+        Sign Up
+      </button>
+    </div>
+    <div id="result" class="mt-4 text-red-500"></div>
+  </form>
+</div>
+
+<script>
+  const signupForm = document.getElementById("signupForm");
+  signupForm.addEventListener("htmx:afterRequest", (e) => {
+    const response = e.detail.xhr;
+    if (response.status === 200) {
+      // Parse the response to get the token
+      const data = JSON.parse(response.responseText);
+      authToken = data.token; // Store the token for future requests
+
+      // Store token in localStorage for persistence across reloads (optional)
+      localStorage.setItem("EhrenmeterToken", authToken);
+      location.reload();
+    } else {
+      document.getElementById("result").innerHTML =
+        "Sign-up failed. Please try again.";
+    }
+  });
+</script>

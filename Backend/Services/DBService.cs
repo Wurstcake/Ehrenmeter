@@ -3,16 +3,18 @@ using System.Data;
 using Azure.Core;
 using Azure.Identity;
 using Microsoft.Extensions.Logging;
+using Ehrenmeter.Backend.Models;
 
 namespace Ehrenmeter.Backend.Services
 {
     interface IDbService
     {
-        Task<int> RegisterUser(string username, string password, string email);
-        Task<bool> AuthenticateUser(string username, string password);
-        Task<int> GiveEhre(int giverId, int receiverId, int amount, string description);
-        Task<IEnumerable<dynamic>> GetUserEhreHistory(int userId);
-        Task<IEnumerable<dynamic>> GetTopUsers(int limit = 10);
+        Task<User?> RegisterUser(string username, string password);
+        Task<(bool isAuthenticated, int userId)> AuthenticateUser(string username, string password);
+        Task GiveEhre(int giverId, int receiverId, int amount, string description);
+        Task<List<EhreTransaction>> GetUserEhreHistory(User receiver);
+        Task<List<User>> GetTopUsers(int limit = 10);
+        Task<User?> GetUser(int userId);
     }
     internal class DbService(ILogger<DbService> logger, IPasswordService passwordService) : IDbService
     {
@@ -42,28 +44,44 @@ namespace Ehrenmeter.Backend.Services
             _connection.AccessToken = _token.Token;
         }
 
-        public async Task<int> RegisterUser(string username, string password, string email)
+        public async Task<User?> RegisterUser(string username, string password)
         {
             await Connect();
             await _connection.OpenAsync();
+
+            logger.LogInformation($"Creating user with username ${username}");
 
             try
             {
                 byte[] salt;
                 string passwordHash = passwordService.HashPassword(password, out salt);
 
+                logger.LogInformation("Successfully hashed password");
+
                 var sql = @"
-                INSERT INTO Users (Username, PasswordHash, Salt, Email)
-                VALUES (@Username, @PasswordHash, @Salt, @Email);
+                INSERT INTO dbo.Users (Username, PasswordHash, Salt, Ehre)
+                VALUES (@Username, @PasswordHash, @Salt, @Ehre);
                 SELECT CAST(SCOPE_IDENTITY() as int)";
 
                 using SqlCommand command = new SqlCommand(sql, _connection);
-                command.Parameters.AddWithValue("@Username", username);
-                command.Parameters.AddWithValue("@PasswordHash", passwordHash);
-                command.Parameters.AddWithValue("@Salt", salt);
-                command.Parameters.AddWithValue("@Email", email);
+                command.Parameters.Add("@Username", SqlDbType.NVarChar).Value = username;
+                command.Parameters.Add("@PasswordHash", SqlDbType.NVarChar).Value = passwordHash;
+                command.Parameters.Add("@Salt", SqlDbType.VarBinary).Value = salt;
+                command.Parameters.Add("@Ehre", SqlDbType.Int).Value = 0;
 
-                return (int)await command.ExecuteScalarAsync();
+                if (int.TryParse((await command.ExecuteScalarAsync())?.ToString(), out var userId))
+                {
+                    logger.LogInformation("Successfully created user");
+                    var user = new User
+                    {
+                        UserId = userId,
+                        Username = username,
+                        Ehre = 0
+                    };
+                    return user;
+
+                }
+                return null;
             }
             finally
             {
@@ -71,27 +89,33 @@ namespace Ehrenmeter.Backend.Services
             }
         }
 
-        public async Task<bool> AuthenticateUser(string username, string password)
+        public async Task<(bool isAuthenticated, int userId)> AuthenticateUser(string username, string password)
         {
             await Connect();
             await _connection.OpenAsync();
 
             try
             {
-                var sql = "SELECT PasswordHash, Salt FROM Users WHERE Username = @Username";
+                var sql = "SELECT UserId, PasswordHash, Salt FROM dbo.Users WHERE Username = @Username";
                 using SqlCommand command = new SqlCommand(sql, _connection);
-                command.Parameters.AddWithValue("@Username", username);
+                command.Parameters.Add("@Username", SqlDbType.NVarChar).Value = username;
 
                 using SqlDataReader reader = await command.ExecuteReaderAsync();
 
                 if (await reader.ReadAsync())
                 {
-                    string storedHash = reader.GetString(0);
-                    byte[] salt = (byte[])reader["Salt"];
-                    return passwordService.VerifyPassword(storedHash, salt, password);
+                    var userId = reader.GetInt32(0);
+                    string storedHash = reader.GetString(1);
+                    var salt = new byte[16];
+                    reader.GetBytes(2, 0, salt, 0, salt.Length);
+                    var isAuthenticated = passwordService.VerifyPassword(storedHash, salt, password);
+
+                    logger.LogInformation($"Authenticated user {username} with id {userId}");
+
+                    return (isAuthenticated, userId);
                 }
 
-                return false;
+                return (false, 0);
             }
             finally
             {
@@ -99,46 +123,25 @@ namespace Ehrenmeter.Backend.Services
             }
         }
 
-        public async Task<int> GiveEhre(int giverId, int receiverId, int amount, string description)
+        public async Task GiveEhre(int giverId, int receiverId, int amount, string description)
         {
             await Connect();
             await _connection.OpenAsync();
-            using SqlTransaction transaction = await _connection.BeginTransactionAsync();
 
             try
             {
-                var giverEhreSql = "SELECT Ehre FROM Users WHERE UserId = @UserId";
-                using SqlCommand giverCommand = new SqlCommand(giverEhreSql, _connection, transaction);
-                giverCommand.Parameters.AddWithValue("@UserId", giverId);
-
-                var giverEhre = (int)await giverCommand.ExecuteScalarAsync();
-                if (giverEhre < amount)
-                {
-                    throw new InvalidOperationException("Not enough Ehre to give.");
-                }
-
                 var sql = @"
                 INSERT INTO EhreTransactions (GiverId, ReceiverId, Amount, Description)
                 VALUES (@GiverId, @ReceiverId, @Amount, @Description);
-                UPDATE Users SET Ehre = Ehre - @Amount WHERE UserId = @GiverId;
-                UPDATE Users SET Ehre = Ehre + @Amount WHERE UserId = @ReceiverId;
-                SELECT CAST(SCOPE_IDENTITY() as int)";
+                UPDATE Users SET Ehre = Ehre + @Amount WHERE UserId = @ReceiverId;";
 
-                using SqlCommand command = new SqlCommand(sql, _connection, transaction);
-                command.Parameters.AddWithValue("@GiverId", giverId);
-                command.Parameters.AddWithValue("@ReceiverId", receiverId);
-                command.Parameters.AddWithValue("@Amount", amount);
-                command.Parameters.AddWithValue("@Description", description);
+                using SqlCommand command = new SqlCommand(sql, _connection);
+                command.Parameters.Add("@GiverId", SqlDbType.Int).Value = giverId;
+                command.Parameters.Add("@ReceiverId", SqlDbType.Int).Value = receiverId;
+                command.Parameters.Add("@Amount", SqlDbType.Int).Value = amount;
+                command.Parameters.Add("@Description", SqlDbType.NVarChar).Value = description;
 
-                var transactionId = (int)await command.ExecuteScalarAsync();
-                await transaction.CommitAsync();
-
-                return transactionId;
-            }
-            catch
-            {
-                await transaction.RollbackAsync();
-                throw;
+                await command.ExecuteNonQueryAsync();
             }
             finally
             {
@@ -146,7 +149,7 @@ namespace Ehrenmeter.Backend.Services
             }
         }
 
-        public async Task<IEnumerable<dynamic>> GetUserEhreHistory(int userId)
+        public async Task<List<EhreTransaction>> GetUserEhreHistory(User receiver)
         {
             await Connect();
             await _connection.OpenAsync();
@@ -154,28 +157,32 @@ namespace Ehrenmeter.Backend.Services
             try
             {
                 var sql = @"
-                SELECT t.TransactionId, u.Username as GiverName, t.Amount, t.Description, t.TransactionDate
+                SELECT u.UserId as GiverId, u.Username as GiverName, t.Amount, t.Description, t.TransactionDate
                 FROM EhreTransactions t
                 JOIN Users u ON t.GiverId = u.UserId
-                WHERE t.ReceiverId = @UserId
+                WHERE t.ReceiverId = @ReceiverId
                 ORDER BY t.TransactionDate DESC";
 
                 using SqlCommand command = new SqlCommand(sql, _connection);
-                command.Parameters.AddWithValue("@UserId", userId);
+                command.Parameters.Add("@ReceiverId", SqlDbType.Int).Value = receiver.UserId;
 
                 using SqlDataReader reader = await command.ExecuteReaderAsync();
 
-                var history = new List<dynamic>();
+                var history = new List<EhreTransaction>();
                 while (await reader.ReadAsync())
                 {
-                    history.Add(new
+                    var transaction = new EhreTransaction()
                     {
-                        TransactionId = reader.GetInt32(0),
-                        GiverName = reader.GetString(1),
+                        Giver = new User
+                        {
+                            UserId = reader.GetInt32(0),
+                            Username = reader.GetString(1)
+                        },
+                        Receiver = receiver,
                         Amount = reader.GetInt32(2),
                         Description = reader.GetString(3),
                         TransactionDate = reader.GetDateTime(4)
-                    });
+                    };
                 }
 
                 return history;
@@ -186,7 +193,7 @@ namespace Ehrenmeter.Backend.Services
             }
         }
 
-        public async Task<IEnumerable<dynamic>> GetTopUsers(int limit = 10)
+        public async Task<List<User>> GetTopUsers(int limit = 10)
         {
             await Connect();
             await _connection.OpenAsync();
@@ -195,26 +202,27 @@ namespace Ehrenmeter.Backend.Services
             {
                 var sql = @"
                 SELECT TOP (@Limit) UserId, Username, Ehre
-                FROM Users
+                FROM dbo.Users
                 ORDER BY Ehre DESC";
 
                 using SqlCommand command = new SqlCommand(sql, _connection);
-                command.Parameters.AddWithValue("@Limit", limit);
+                command.Parameters.Add("@Limit", SqlDbType.Int).Value = limit;
 
                 using SqlDataReader reader = await command.ExecuteReaderAsync();
 
-                var topUsers = new List<dynamic>();
+                var topUsers = new List<User>();
                 while (await reader.ReadAsync())
                 {
-                    topUsers.Add(new
+                    var user = new User
                     {
                         UserId = reader.GetInt32(0),
                         Username = reader.GetString(1),
                         Ehre = reader.GetInt32(2)
-                    });
+                    };
+                    topUsers.Add(user);
                 }
-
                 return topUsers;
+
             }
             finally
             {
@@ -222,18 +230,29 @@ namespace Ehrenmeter.Backend.Services
             }
         }
 
-        public async Task<int> GetUserEhre(int userId)
+        public async Task<User?> GetUser(int userId)
         {
             await Connect();
             await _connection.OpenAsync();
 
             try
             {
-                var sql = "SELECT Ehre FROM Users WHERE UserId = @UserId";
+                var sql = "SELECT Username, Ehre FROM Users WHERE UserId = @UserId";
                 using SqlCommand command = new SqlCommand(sql, _connection);
                 command.Parameters.AddWithValue("@UserId", userId);
 
-                return (int)await command.ExecuteScalarAsync();
+                var reader = await command.ExecuteReaderAsync();
+                if (await reader.ReadAsync())
+                {
+                    return new User
+                    {
+                        UserId = userId,
+                        Username = reader.GetString(0),
+                        Ehre = reader.GetInt32(1)
+                    };
+                }
+
+                return null;
             }
             finally
             {
