@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ehre Social Points System</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+
+  <body class="bg-gray-100">
+    <div class="container mx-auto p-4">
+      <h1 class="text-3xl font-bold mb-4">Ehre Social Points System</h1>
+
+      <!-- Main Table -->
+      <div class="bg-white shadow-md rounded-lg overflow-hidden">
+        <table class="min-w-full">
+          <thead class="bg-gray-200">
+            <tr>
+              <th class="py-2 px-4 text-left">Benutzer</th>
+              <th class="py-2 px-4 text-left">Ehre</th>
+              <th class="py-2 px-4 text-left">Aktion</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b">
+              <td class="py-2 px-4">
+                <a href="#" onclick="showSidePanel('Max Mustermann')"
+                  >Max Mustermann</a
+                >
+              </td>
+              <td class="py-2 px-4">150</td>
+              <td class="py-2 px-4">
+                <button
+                  onclick="ehreModal.showModal()"
+                  class="bg-blue-500 text-white px-3 py-1 rounded"
+                >
+                  Ehre geben
+                </button>
+              </td>
+            </tr>
+            <tr class="border-b">
+              <td class="py-2 px-4">
+                <a href="#" onclick="showSidePanel('Erika Musterfrau')"
+                  >Erika Musterfrau</a
+                >
+              </td>
+              <td class="py-2 px-4">120</td>
+              <td class="py-2 px-4">
+                <button
+                  onclick="ehreModal.showModal()"
+                  class="bg-blue-500 text-white px-3 py-1 rounded"
+                >
+                  Ehre geben
+                </button>
+              </td>
+            </tr>
+            <!-- More rows can be added here -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Modal for giving Ehre using dialog -->
+      <dialog
+        id="ehreModal"
+        class="p-0 rounded-lg shadow-xl backdrop:bg-black backdrop:bg-opacity-50"
+      >
+        <div class="bg-white p-6 w-96">
+          <h2 class="text-xl font-bold mb-4">Ehre geben</h2>
+          <form method="dialog">
+            <div class="mb-4">
+              <label for="ehre-amount" class="block mb-2"
+                >Wie viel Ehre möchten Sie geben?</label
+              >
+              <select id="ehre-amount" class="w-full border rounded px-2 py-1">
+                <option value="1">1 Ehre</option>
+                <option value="2">2 Ehre</option>
+                <option value="3">3 Ehre</option>
+                <option value="4">4 Ehre</option>
+                <option value="5">5 Ehre</option>
+              </select>
+            </div>
+            <div class="mb-4">
+              <label for="ehre-description" class="block mb-2"
+                >Beschreibung</label
+              >
+              <textarea
+                id="ehre-description"
+                class="w-full border rounded px-2 py-1"
+                rows="3"
+              ></textarea>
+            </div>
+            <div class="flex justify-end">
+              <button
+                type="button"
+                onclick="ehreModal.close()"
+                class="bg-gray-300 text-black px-4 py-2 rounded mr-2"
+              >
+                Abbrechen
+              </button>
+              <button
+                type="submit"
+                class="bg-blue-500 text-white px-4 py-2 rounded"
+              >
+                Bestätigen
+              </button>
+            </div>
+          </form>
+        </div>
+      </dialog>
+
+      <!-- Side Panel for User History -->
+      <div
+        id="sidePanel"
+        class="fixed inset-y-0 right-0 w-96 bg-white shadow-lg p-6 overflow-y-auto hidden"
+      >
+        <button
+          onclick="hideSidePanel()"
+          class="absolute top-4 right-4 text-gray-500"
+        >
+          &times;
+        </button>
+        <h2 id="sidePanelTitle" class="text-2xl font-bold mb-4"></h2>
+        <table class="w-full">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="py-2 px-4 text-left">Datum</th>
+              <th class="py-2 px-4 text-left">Ehre</th>
+              <th class="py-2 px-4 text-left">Beschreibung</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b">
+              <td class="py-2 px-4">15.09.2024</td>
+              <td class="py-2 px-4">+3</td>
+              <td class="py-2 px-4">Hilfe beim Projekt</td>
+            </tr>
+            <tr class="border-b">
+              <td class="py-2 px-4">10.09.2024</td>
+              <td class="py-2 px-4">+2</td>
+              <td class="py-2 px-4">Gute Präsentation</td>
+            </tr>
+            <!-- More rows can be added here -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+      const ehreModal = document.getElementById("ehreModal");
+      const sidePanel = document.getElementById("sidePanel");
+      const sidePanelTitle = document.getElementById("sidePanelTitle");
+
+      function showSidePanel(username) {
+        sidePanelTitle.textContent = `${username}'s Ehre-Historie`;
+        sidePanel.classList.remove("hidden");
+      }
+
+      function hideSidePanel() {
+        sidePanel.classList.add("hidden");
+      }
+    </script>
+  </body>
+</html>

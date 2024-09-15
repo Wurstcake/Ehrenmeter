@@ -1,0 +1,26 @@
+{
+  "name": "ehrenmeter",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.html",
+  "scripts": {
+    "build:css:dev": "npx tailwindcss@3.1.8 -i src/tailwindstyles/tailwind.css -o src/styles.css --watch",
+    "build:dev": "npm run build:css:dev",
+    "dev": "npm run build:dev & swa start src"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Wurstcake/Ehrenmeter.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Wurstcake/Ehrenmeter/issues"
+  },
+  "homepage": "https://github.com/Wurstcake/Ehrenmeter#readme",
+  "devDependencies": {
+    "@azure/static-web-apps-cli": "^2.0.1",
+    "prettier-plugin-tailwindcss": "^0.6.6",
+    "tailwindcss": "^3.4.11"
+  }
+}
