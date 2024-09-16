@@ -6,7 +6,11 @@
   "scripts": {
     "build:css:dev": "npx tailwindcss@3.1.8 -i src/tailwindstyles/tailwind.css -o src/styles.css --watch",
     "build:dev": "npm run build:css:dev",
-    "dev": "npm run build:dev & swa start src --api-location http://localhost:7071"
+    "dev": "npm run build:dev & swa start src --api-location http://localhost:7071",
+    "build:packages": "cp -r src/packages/ public/",
+    "build:html": "cp src/*.html public/",
+    "build:assets": "cp -r src/assets/ public/assets/",
+    "build": "mkdir public && mkdir -p public/packages && npm run build:css && npm run build:packages && npm run build:html && npm run build:assets"
   },
   "repository": {
     "type": "git",
