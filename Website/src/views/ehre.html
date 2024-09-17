@@ -1,88 +1,73 @@
-<div class="bg-white shadow-md rounded-lg overflow-hidden">
-  <table class="min-w-full">
-    <thead class="bg-gray-200">
-      <tr>
-        <th class="py-2 px-4 text-left">Benutzer</th>
-        <th class="py-2 px-4 text-left">Ehre</th>
-        <th class="py-2 px-4 text-left">Aktion</th>
-      </tr>
-    </thead>
-    <tbody>
-      {{ for user in users }}
-      <tr class="border-b">
-        <td class="py-2 px-4">
-          <a href="#">{{ user.username }}</a>
-        </td>
-        <td class="py-2 px-4">{{ user.ehre }}</td>
-        <td class="py-2 px-4">
-          <button
-            onclick="openEhreModal('{{ user.user_id }}')"
-            class="bg-blue-500 text-white px-3 py-1 rounded"
-          >
-            +Ehre
-          </button>
-        </td>
-      </tr>
-      {{ end }}
-    </tbody>
-  </table>
+<div class="overflow-hidden rounded-lg bg-white shadow-md">
+    <table class="min-w-full">
+        <thead class="bg-gray-200">
+            <tr>
+                <th class="px-4 py-2 text-left">Benutzer</th>
+                <th class="px-4 py-2 text-left">Ehre</th>
+                <th class="px-4 py-2 text-left">Aktion</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{ for user in users }}
+            <tr class="border-b hover:bg-gray-100">
+                <td hx-get="/api/ehre-history?receiver-id={{ user.user_id }}" hx-target="#content-container"
+                    class="cursor-pointer px-4 py-2">
+                    {{ user.username }}
+                </td>
+                <td hx-get="/api/ehre-history?receiver-id={{ user.user_id }}" hx-target="#content-container"
+                    class="cursor-pointer px-4 py-2">
+                    {{ user.ehre }}
+                </td>
+                <td class="px-4 py-2">
+                    <button onclick="openEhreModal('{{ user.user_id }}')"
+                        class="rounded bg-blue-500 px-3 py-1 text-white">
+                        +Ehre
+                    </button>
+                </td>
+            </tr>
+            {{ end }}
+        </tbody>
+    </table>
 </div>
 
-<dialog
-  id="ehreModal"
-  class="p-0 rounded-lg shadow-xl backdrop:bg-black backdrop:bg-opacity-50"
->
-  <div class="bg-white p-6 w-96">
-    <h2 class="text-xl font-bold mb-4">Ehre geben</h2>
-    <form hx-post="/api/ehre" hx-target="#content-container">
-      <input type="hidden" id="receiver-id" name="receiverId" />
-      <div class="mb-4">
-        <label for="ehre-amount" class="block mb-2"
-          >Wie viel Ehre soll vergeben werden?</label
-        >
-        <select
-          id="ehre-amount"
-          name="amount"
-          class="w-full border rounded px-2 py-1"
-        >
-          <option value="1">1 Ehre</option>
-          <option value="2">2 Ehre</option>
-          <option value="3">3 Ehre</option>
-          <option value="4">4 Ehre</option>
-          <option value="5">5 Ehre</option>
-        </select>
-      </div>
-      <div class="mb-4">
-        <label for="ehre-description" class="block mb-2">Grund</label>
-        <textarea
-          id="ehre-description"
-          name="description"
-          class="w-full border rounded px-2 py-1"
-          rows="3"
-        ></textarea>
-      </div>
-      <div class="flex justify-end">
-        <button
-          type="button"
-          onclick="ehreModal.close()"
-          class="bg-gray-300 text-black px-4 py-2 rounded mr-2"
-        >
-          Abbrechen
-        </button>
-        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">
-          Bestätigen
-        </button>
-      </div>
-    </form>
-  </div>
+<dialog id="ehreModal" class="rounded-lg p-0 shadow-xl backdrop:bg-black backdrop:bg-opacity-50">
+    <div class="w-96 bg-white p-6">
+        <h2 class="mb-4 text-xl font-bold">Ehre geben</h2>
+        <form hx-post="/api/ehre" hx-target="#content-container">
+            <input type="hidden" id="receiver-id" name="receiver-id" />
+            <div class="mb-4">
+                <label for="ehre-amount" class="mb-2 block">Wie viel Ehre soll vergeben werden?</label>
+                <select id="ehre-amount" name="amount" class="w-full rounded border px-2 py-1">
+                    <option value="1">1 Ehre</option>
+                    <option value="2">2 Ehre</option>
+                    <option value="3">3 Ehre</option>
+                    <option value="4">4 Ehre</option>
+                    <option value="5">5 Ehre</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="ehre-description" class="mb-2 block">Grund</label>
+                <textarea id="ehre-description" name="description" class="w-full rounded border px-2 py-1"
+                    rows="3"></textarea>
+            </div>
+            <div class="flex justify-end">
+                <button type="button" onclick="ehreModal.close()" class="mr-2 rounded bg-gray-300 px-4 py-2 text-black">
+                    Abbrechen
+                </button>
+                <button type="submit" class="rounded bg-blue-500 px-4 py-2 text-white">
+                    Bestätigen
+                </button>
+            </div>
+        </form>
+    </div>
 </dialog>
 
 <script>
-  var ehreModal = document.getElementById("ehreModal");
-  var receiverIdInput = document.getElementById("receiver-id");
+    var ehreModal = document.getElementById("ehreModal");
+    var receiverIdInput = document.getElementById("receiver-id");
 
-  function openEhreModal(userId) {
-    receiverIdInput.value = userId; // Set the receiverId when the modal opens
-    ehreModal.showModal();
-  }
+    function openEhreModal(userId) {
+        receiverIdInput.value = userId; // Set the receiverId when the modal opens
+        ehreModal.showModal();
+    }
 </script>

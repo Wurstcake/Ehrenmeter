@@ -11,7 +11,7 @@ namespace Ehrenmeter.Backend
             IJwtTokenService _jwtTokenService)
     {
         [Function("ehre")]
-        public async Task<IActionResult> Index([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequest req)
+        public async Task<IActionResult> Ehre([HttpTrigger(AuthorizationLevel.Anonymous, "get", "post")] HttpRequest req)
         {
             var token = req.Headers["Authorization"].ToString().Replace("Bearer ", "");
             if (token is null ||
@@ -25,7 +25,7 @@ namespace Ehrenmeter.Backend
             if (req.Method == "POST"){
                 var formData = await req.ReadFormAsync();
         
-                var receiverId = int.Parse(formData["receiverId"].ToString());
+                var receiverId = int.Parse(formData["receiver-id"].ToString());
                 var amount = int.Parse(formData["amount"].ToString());
                 string description = formData["description"].ToString();
 
@@ -39,6 +39,31 @@ namespace Ehrenmeter.Backend
 
             logger.LogInformation($"Retrieved {users.Count} users for ehre view");
             return await RenderView("ehre", pageViewData);
+        }
+
+        [Function("ehre-history")]
+        public async Task<IActionResult> EhreHistory([HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequest req)
+        {
+            var token = req.Headers["Authorization"].ToString().Replace("Bearer ", "");
+            if (token is null ||
+                !await _jwtTokenService.ValidateToken(token))
+            {
+                return await RenderView("login");
+            }
+
+            var queryData = req.Query;
+
+            var receiverId = int.Parse(queryData["receiver-id"].ToString());
+            
+            var receiver = await dbService.GetUser(receiverId) ?? throw new BadHttpRequestException("Invalid receiver id");
+            var transactions = await dbService.GetUserEhreHistory(receiver);
+            var pageViewData = new {
+                Username = receiver.Username,
+                Transactions = transactions
+            };
+
+            logger.LogInformation($"Retrieved {transactions.Count} transactions for ehre history view");
+            return await RenderView("ehre-history", pageViewData);
         }
 
         [Function("login")]

@@ -168,6 +168,8 @@ namespace Ehrenmeter.Backend.Services
 
                 using SqlDataReader reader = await command.ExecuteReaderAsync();
 
+                logger.LogInformation($"Retrieved transactions for receiver {receiver.UserId}");
+
                 var history = new List<EhreTransaction>();
                 while (await reader.ReadAsync())
                 {
@@ -183,6 +185,8 @@ namespace Ehrenmeter.Backend.Services
                         Description = reader.GetString(3),
                         TransactionDate = reader.GetDateTime(4)
                     };
+
+                    history.Add(transaction);
                 }
 
                 return history;

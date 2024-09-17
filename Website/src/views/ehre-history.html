@@ -1,23 +1,23 @@
-<h2 id="sidePanelTitle" class="text-2xl font-bold mb-4"></h2>
-<table class="w-full">
-  <thead class="bg-gray-100">
-    <tr>
-      <th class="py-2 px-4 text-left">Datum</th>
-      <th class="py-2 px-4 text-left">Ehre</th>
-      <th class="py-2 px-4 text-left">Beschreibung</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr class="border-b">
-      <td class="py-2 px-4">15.09.2024</td>
-      <td class="py-2 px-4">+3</td>
-      <td class="py-2 px-4">Hilfe beim Projekt</td>
-    </tr>
-    <tr class="border-b">
-      <td class="py-2 px-4">10.09.2024</td>
-      <td class="py-2 px-4">+2</td>
-      <td class="py-2 px-4">Gute Präsentation</td>
-    </tr>
-    <!-- More rows can be added here -->
-  </tbody>
-</table>
+<h2 class="mb-2 text-2xl font-bold">{{ username }}</h2>
+<div class="overflow-hidden rounded-lg bg-white shadow-md">
+    <table class="min-w-full">
+        <thead class="bg-gray-200">
+            <tr>
+                <th class="px-4 py-2 text-left">Gegeben von</th>
+                <th class="px-4 py-2 text-left">Ehre</th>
+                <th class="px-4 py-2 text-left">Grund</th>
+                <th class="px-4 py-2 text-left">Datum</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{ for transaction in transactions }}
+            <tr class="border-b">
+                <td class="px-4 py-2">{{ transaction.giver.username }}</td>
+                <td class="px-4 py-2">+{{ transaction.amount }}</td>
+                <td class="px-4 py-2">{{ transaction.description }}</td>
+                <td class="px-4 py-2">{{ transaction.transaction_date }}</td>
+            </tr>
+            {{ end }}
+        </tbody>
+    </table>
+</div>

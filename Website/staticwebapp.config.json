@@ -1,8 +1,3 @@
 {
-  "routes": [
-    {
-      "route": "/",
-      "serve": "/index.html"
-    }
-  ]
+  "routes": []
 }
